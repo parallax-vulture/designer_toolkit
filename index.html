@@ -378,7 +378,7 @@ function doGet() {
     /* ================= 2. STATE STORAGE ================= */
     // Team sheet used for every visitor unless they set their own URL.
     // Search with AI: paste your Apps Script web app URL (ends in /exec). Leave '' to disable.
-    const AI_RELAY_URL = '';
+    const AI_RELAY_URL = 'https://script.google.com/macros/s/AKfycbz5Xo-E0fAmrkhFlYm9NodMiZMMSYA4XH4Zv43ywJDnTB0XDFVM0qBp7qmiKrObBtlazg/exec';
     const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROw6fW-Ex45S7GEThJJ4uVIM-yxHYgbZqT0xcRnVTIdPG4fp0qqnpAj3Mam4OHNPAZ-5cDhRn2rAUm/pub?gid=0&single=true&output=csv';
     function getSheetUrl() { return localStorage.getItem('hub_sheet_url') || DEFAULT_SHEET_URL; }
     let isLoadingTools = false;
