@@ -283,7 +283,7 @@
         <div class="bg-slate-100 dark:bg-slate-800 p-2.5 rounded-lg font-mono text-[11px] text-slate-800 dark:text-slate-200">
           title, url, type, topic, description, tags, icon, related_tools, source, id <span class="text-slate-400">(related_tools, source, id optional)</span>
         </div>
-        <p><strong>type:</strong> Guide, Video, PDF, Template, Website, etc. <strong>topic:</strong> used for the filter pills. <strong>tags</strong> and <strong>related_tools</strong> are comma-separated; related_tools can be tool names (e.g. <code>TinkerCAD</code>) or tool ids and show as chips that jump to that tool. <strong>source:</strong> put <code>team</code> for guides made by your team (shown under "From the team"); leave blank or write anything else (e.g. <code>external</code>) for outside resources.</p>
+        <p><strong>type:</strong> Guide, Video, PDF, Template, Website, etc. <strong>topic:</strong> used for the filter pills. <strong>tags</strong> and <strong>related_tools</strong> are comma-separated; related_tools can be tool names (e.g. <code>TinkerCAD</code>) or tool ids and show as chips that jump to that tool. <strong>source:</strong> put <code>team</code> for guides made by your team (shown under ""); leave blank or write anything else (e.g. <code>external</code>) for outside resources.</p>
         <p><strong>Publishing:</strong> In your Google Sheet, click <em>File &gt; Share &gt; Publish to the web</em>, choose <em>Comma-separated values (.csv)</em>, click <em>Publish</em>, and paste the URL here.</p>
       </div>
 
@@ -784,9 +784,9 @@ function doGet() {
       };
       container.className = 'space-y-8';
       container.innerHTML =
-        section('team', '🏫 From the team', 'Guides, templates, and files made or curated by our team.', team,
+        section('team', '🏫 From Project Designers', 'Guides, templates, and files made or curated by our project designers.', team,
           showTeamHint ? 'Add a <code>source</code> column with <code>team</code> to feature your own guides here.' : '') +
-        section('external', '🌐 External online resources &amp; guides', 'Helpful guides and references from around the web.', ext, '');
+        section('external', '🌐 External Resources &amp; Guides', 'Helpful guides and references from around the web.', ext, '');
     }
 
     function renderGridCard(tool, idx) {
