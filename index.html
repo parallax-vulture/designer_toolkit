@@ -281,9 +281,9 @@
         <p><strong>Icon Column:</strong> Accepts standard emojis (e.g. <code>🐙</code>) OR direct image URLs (e.g. <code>https://.../logo.png</code>, <code>https://www.google.com/s2/favicons?domain=github.com&sz=64</code>).</p>
         <p class="pt-2 font-semibold text-slate-800 dark:text-slate-200">Resources sheet (separate tab or file), row 1 headers:</p>
         <div class="bg-slate-100 dark:bg-slate-800 p-2.5 rounded-lg font-mono text-[11px] text-slate-800 dark:text-slate-200">
-          title, url, type, topic, description, tags, icon, related_tools, id <span class="text-slate-400">(related_tools and id optional)</span>
+          title, url, type, topic, description, tags, icon, related_tools, source, id <span class="text-slate-400">(related_tools, source, id optional)</span>
         </div>
-        <p><strong>type:</strong> Guide, Video, PDF, Template, Website, etc. <strong>topic:</strong> used for the filter pills. <strong>tags</strong> and <strong>related_tools</strong> are comma-separated; related_tools can be tool names (e.g. <code>TinkerCAD</code>) or tool ids and show as chips that jump to that tool.</p>
+        <p><strong>type:</strong> Guide, Video, PDF, Template, Website, etc. <strong>topic:</strong> used for the filter pills. <strong>tags</strong> and <strong>related_tools</strong> are comma-separated; related_tools can be tool names (e.g. <code>TinkerCAD</code>) or tool ids and show as chips that jump to that tool. <strong>source:</strong> put <code>team</code> for guides made by your team (shown under "From the team"); leave blank or write anything else (e.g. <code>external</code>) for outside resources.</p>
         <p><strong>Publishing:</strong> In your Google Sheet, click <em>File &gt; Share &gt; Publish to the web</em>, choose <em>Comma-separated values (.csv)</em>, click <em>Publish</em>, and paste the URL here.</p>
       </div>
 
@@ -428,7 +428,7 @@ function doGet() {
     const favStore = { tools: loadJson('hub_favorites', []), resources: loadJson('hub_res_favorites', []) };
     let favorites = favStore.tools; // favorites of the active tab
     let activeTab = 'tools';
-    const tabState = { tools: { cat: 'All', q: '' }, resources: { cat: 'All', q: '', type: 'All' } };
+    const tabState = { tools: { cat: 'All', q: '' }, resources: { cat: 'All', q: '', type: 'All', source: 'All' } };
     const SEARCH_PLACEHOLDERS = { tools: 'Search tools or use the filters below to narrow your search', resources: 'Search guides and resources' };
 
     // Resources state
@@ -436,8 +436,8 @@ function doGet() {
     let resourceItems = loadJson('hub_res_items', []);
     let isLoadingResources = false;
     const SAMPLE_RESOURCES = [
-      { id: 'sample-cardboard', title: 'Working With Cardboard', url: '#', type: 'Guide', topic: 'Materials', description: 'SAMPLE: cutting, scoring, folding, and joining cardboard for prototypes.', tags: 'Cardboard, Prototyping', icon: '📦', related_tools: 'Makercase' },
-      { id: 'sample-laser', title: 'Laser Cutting Basics', url: '#', type: 'Video', topic: 'Fabrication', description: 'SAMPLE: preparing vector files, safety, and settings for the laser cutter.', tags: 'Laser, Safety', icon: '🔦', related_tools: 'Makercase' },
+      { id: 'sample-cardboard', title: 'Working With Cardboard', url: '#', source: 'team', type: 'Guide', topic: 'Materials', description: 'SAMPLE: cutting, scoring, folding, and joining cardboard for prototypes.', tags: 'Cardboard, Prototyping', icon: '📦', related_tools: 'Makercase' },
+      { id: 'sample-laser', title: 'Laser Cutting Basics', url: '#', source: 'team', type: 'Video', topic: 'Fabrication', description: 'SAMPLE: preparing vector files, safety, and settings for the laser cutter.', tags: 'Laser, Safety', icon: '🔦', related_tools: 'Makercase' },
       { id: 'sample-tinkercad', title: 'Intro to TinkerCAD', url: '#', type: 'Guide', topic: '3D Design', description: 'SAMPLE: your first 3D model, from basic shapes to an exported STL.', tags: '3D Modeling, Beginner', icon: '🧊', related_tools: 'TinkerCAD' },
       { id: 'sample-flyer', title: 'Designing a Flyer', url: '#', type: 'Template', topic: 'Graphic Design', description: 'SAMPLE: layout, hierarchy, and a starter template for event flyers.', tags: 'Layout, Print', icon: '📰', related_tools: '' },
       { id: 'sample-3dprint', title: '3D Printing Checklist', url: '#', type: 'PDF', topic: 'Fabrication', description: 'SAMPLE: one-page checklist before sending a model to the printer.', tags: '3D Printing, Checklist', icon: '✅', related_tools: 'TinkerCAD' }
@@ -688,6 +688,11 @@ function doGet() {
         filtered = filtered.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
       }
 
+      if (activeTab === 'resources') {
+        if (tabState.resources.source === 'team') filtered = filtered.filter(r => r.team);
+        else if (tabState.resources.source === 'external') filtered = filtered.filter(r => !r.team);
+        filtered = filtered.filter(r => r.team).concat(filtered.filter(r => !r.team)); // stable: team section first
+      }
       currentRenderedTools = filtered;
       return filtered;
     }
@@ -730,6 +735,12 @@ function doGet() {
 
       emptyState.classList.add('hidden');
 
+      if (activeTab === 'resources') {
+        renderResourceSections(container, tools);
+        applyKeyboardFocusVisuals();
+        return;
+      }
+
       if (viewMode === 'grid') {
         container.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4";
         container.innerHTML = tools.map((tool, idx) => renderGridCard(tool, idx)).join('');
@@ -739,6 +750,43 @@ function doGet() {
       }
 
       applyKeyboardFocusVisuals();
+    }
+
+    const GRID_CLASS = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4";
+    const LIST_CLASS = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm";
+    const TEAM_BADGE = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">★ Team</span>';
+
+    function resourcesHaveSourceColumn() { return getAllResources().some(r => r.source); }
+
+    function renderResourceSections(container, items) {
+      const team = items.filter(r => r.team);
+      const ext = items.filter(r => !r.team);
+      const filtersActive = !!currentSearchQuery.trim() || activeCategory !== 'All' || tabState.resources.type !== 'All' || tabState.resources.source !== 'All';
+      const showTeamHint = !team.length && !filtersActive && !resourcesHaveSourceColumn();
+      let idx = 0;
+      const section = (key, title, subtitle, list, hint) => {
+        if (!list.length && !hint) return '';
+        const body = list.length
+          ? `<div class="${viewMode === 'grid' ? GRID_CLASS : LIST_CLASS}">${list.map(r => viewMode === 'grid' ? renderGridCard(r, idx++) : renderListRow(r, idx++)).join('')}</div>`
+          : `<div class="px-3.5 py-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">${hint}</div>`;
+        return `
+          <section data-section="${key}" class="space-y-3">
+            <div class="flex items-end justify-between gap-3 px-1">
+              <div>
+                <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">${title}
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400">${list.length}</span>
+                </h2>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">${subtitle}</p>
+              </div>
+            </div>
+            ${body}
+          </section>`;
+      };
+      container.className = 'space-y-8';
+      container.innerHTML =
+        section('team', '🏫 From the team', 'Guides, templates, and files made or curated by our team.', team,
+          showTeamHint ? 'Add a <code>source</code> column with <code>team</code> to feature your own guides here.' : '') +
+        section('external', '🌐 External online resources &amp; guides', 'Helpful guides and references from around the web.', ext, '');
     }
 
     function renderGridCard(tool, idx) {
@@ -756,7 +804,7 @@ function doGet() {
       }).join(' ');
 
       return `
-        <article data-tool-id="${escapeHtml(tool.id)}" data-index="${idx}" class="tool-card group relative flex flex-col justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-brand-300 dark:hover:border-brand-700 transition-all duration-150">
+        <article data-tool-id="${escapeHtml(tool.id)}" data-index="${idx}" class="tool-card group relative flex flex-col justify-between p-4 bg-white dark:bg-slate-900 border ${tool.team ? 'border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-100 dark:ring-emerald-900/40' : 'border-slate-200/90 dark:border-slate-800'} rounded-2xl shadow-sm hover:shadow-md hover:border-brand-300 dark:hover:border-brand-700 transition-all duration-150">
           <div>
             <!-- Header: Icon, Name, Category, Star -->
             <div class="flex items-start justify-between gap-2.5 mb-2.5">
@@ -769,6 +817,7 @@ function doGet() {
                   <div class="flex items-center space-x-1.5 mt-0.5">
                     <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">${highlightedCat}</span>
                     ${tool.badge ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${escapeHtml(tool.badge)}</span>` : ''}
+                    ${tool.team ? TEAM_BADGE : ''}
                   </div>
                 </div>
               </div>
@@ -809,7 +858,7 @@ function doGet() {
       const highlightedDesc = matches.description ? highlightWithIndices(tool.description, matches.description) : escapeHtml(tool.description);
 
       return `
-        <div data-tool-id="${escapeHtml(tool.id)}" data-index="${idx}" class="tool-card flex items-center justify-between p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+        <div data-tool-id="${escapeHtml(tool.id)}" data-index="${idx}" class="tool-card flex items-center justify-between p-3.5 ${tool.team ? 'border-l-4 border-l-emerald-400 dark:border-l-emerald-600' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
           <div class="flex items-center space-x-3.5 min-w-0 mr-4">
             <button type="button" data-action="star" data-id="${escapeHtml(tool.id)}" class="text-slate-300 dark:text-slate-600 hover:text-amber-400 transition-colors shrink-0">
               <span class="text-base ${isStarred ? 'text-amber-400' : ''}">★</span>
@@ -820,6 +869,7 @@ function doGet() {
                 <span class="text-xs font-bold text-slate-900 dark:text-white truncate">${highlightedName}</span>
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">${escapeHtml(tool.category)}</span>
                 ${tool.badge ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 font-semibold">${escapeHtml(tool.badge)}</span>` : ''}
+                ${tool.team ? TEAM_BADGE : ''}
               </div>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-xl">${highlightedDesc}</p>
               ${renderRelatedChips(tool, true)}
@@ -872,7 +922,11 @@ function doGet() {
         const on = cur.toLowerCase() === t.toLowerCase();
         const cls = on ? 'bg-brand-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800';
         return `<button type="button" data-action="type" data-type="${escapeHtml(t)}" class="px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all ${cls}">${escapeHtml(t)}</button>`;
-      }).join('');
+      }).join('') + (resourcesHaveSourceColumn() ? '<span class="text-slate-300 dark:text-slate-700 px-1">|</span>' + [['All','All'],['team','From the team'],['external','External']].map(([v, label]) => {
+        const on = tabState.resources.source === v;
+        const cls = on ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800';
+        return `<button type="button" data-action="source" data-source="${v}" class="px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all ${cls}">${label}</button>`;
+      }).join('') : '');
     }
 
     function resolveRelatedTool(ref) {
@@ -1274,7 +1328,7 @@ function doGet() {
         showToast(err.message, "error");
       } finally {
         syncBtn.disabled = false;
-        syncBtn.textContent = "Sync Sheet";
+        syncBtn.textContent = "Sync Digital Tools";
       }
     }
 
@@ -1305,6 +1359,8 @@ function doGet() {
     }
 
     /* ---------- Resources data ---------- */
+    // Optional `source` column: these values (case-insensitive) mark team-made content; anything else = external.
+    const TEAM_SOURCE_VALUES = ['team', 'beam', 'beam team', 'internal', 'from the team', 'custom', 'yes'];
     function normalizeResources(rawRows) {
       if (!Array.isArray(rawRows)) return [];
       const seen = new Set();
@@ -1326,6 +1382,8 @@ function doGet() {
         let unique = id, n = 2;
         while (seen.has(unique)) unique = `${id}-${n++}`;
         seen.add(unique);
+        const srcSet = Object.prototype.hasOwnProperty.call(r, 'source');
+        const isTeam = TEAM_SOURCE_VALUES.includes(str(r.source).toLowerCase());
         const type = str(r.type) || 'Resource';
         const topic = str(r.topic) || str(r.category) || 'General';
         out.push({
@@ -1340,7 +1398,9 @@ function doGet() {
           description: str(r.description),
           tags: list(r.tags),
           icon: str(r.icon) || '📘',
-          related: list(r.related_tools || r.related)
+          related: list(r.related_tools || r.related),
+          source: srcSet ? (isTeam ? 'team' : 'external') : '',
+          team: isTeam
         });
       });
       return out;
@@ -1549,9 +1609,10 @@ function doGet() {
       else if (btn.dataset.action === 'related') { e.stopPropagation(); jumpToTool(btn.dataset.toolName); }
     });
     document.getElementById('type-pills').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action="type"]');
+      const btn = e.target.closest('[data-action="type"], [data-action="source"]');
       if (!btn) return;
-      tabState.resources.type = btn.dataset.type;
+      if (btn.dataset.action === 'source') tabState.resources.source = btn.dataset.source;
+      else tabState.resources.type = btn.dataset.type;
       highlightedIndex = -1;
       renderApp();
     });
@@ -1699,7 +1760,7 @@ function doGet() {
       }));
       // Only real (sheet) resources are sent; samples are placeholders.
       const resources = resourceItems.slice(0, 200).map(r => ({
-        id: r.id, title: r.title, type: r.type, topic: r.topic, description: r.description, tags: r.tags || []
+        id: r.id, title: r.title, type: r.type, topic: r.topic, description: r.description, tags: r.tags || [], source: r.team ? 'team' : 'external'
       }));
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer = setTimeout(() => controller && controller.abort(), AI_TIMEOUT_MS);
