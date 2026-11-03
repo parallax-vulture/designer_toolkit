@@ -105,6 +105,20 @@
   <!-- ================= SEARCH & FILTER CONTROL BAR ================= -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     
+    <!-- Tools / Resources toggle -->
+    <div class="flex items-center justify-between gap-3 mb-4">
+      <div class="inline-flex items-center p-1 bg-slate-200/70 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700" role="tablist">
+        <button id="tab-tools-btn" type="button" role="tab" onclick="setTab('tools')" class="px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-800 dark:text-white bg-white dark:bg-slate-700 shadow-sm">🧰 Tools</button>
+        <button id="tab-resources-btn" type="button" role="tab" onclick="setTab('resources')" class="px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">📚 Resources</button>
+      </div>
+    </div>
+
+    <!-- Sample resources banner -->
+    <div id="sample-res-banner" class="hidden mb-4 px-3.5 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-3">
+      <span><strong>Sample resources:</strong> connect your Resources sheet to replace these.</span>
+      <button type="button" onclick="openSheetsModal()" class="shrink-0 px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 font-semibold">Connect</button>
+    </div>
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       
       <!-- Fuzzy Search Bar -->
@@ -158,6 +172,7 @@
     </div>
 
     <!-- Category Filter Pills -->
+    <div id="type-pills" class="hidden flex items-center space-x-2 overflow-x-auto pb-2 mb-2 scrollbar-none text-[11px]"></div>
     <div id="category-pills" class="flex items-center space-x-2 overflow-x-auto pb-3 mb-6 scrollbar-none text-xs">
       <!-- Dynamic category pills inserted via JS -->
     </div>
@@ -178,7 +193,7 @@
       <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl">
         🔍
       </div>
-      <h3 class="text-base font-bold text-slate-800 dark:text-slate-200 mb-1">No matching tools found</h3>
+      <h3 class="text-base font-bold text-slate-800 dark:text-slate-200 mb-1">No matching <span id="empty-noun">tools</span> found</h3>
       <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">Check your search query or verify your Google Sheet rows.</p>
       <button onclick="clearSearch()" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
         Reset Search Filter
@@ -229,6 +244,23 @@
           </button>
         </div>
 
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Resources sheet (published CSV URL)</label>
+          <input type="url" id="res-sheet-url-input" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&single=true&output=csv" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-mono" />
+          <p class="text-[11px] text-slate-400 mt-1">Guides, videos, and templates shown on the Resources tab. See <em>Column Schema &amp; Setup</em> for the columns.</p>
+        </div>
+
+        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">Resources Status</div>
+            <div id="res-sync-details" class="text-[11px] text-slate-500 dark:text-slate-400">No resources sheet connected.</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="resetResources()" class="text-red-500 hover:text-red-700 dark:hover:text-red-400 font-medium">Reset</button>
+            <button id="res-sync-btn" type="button" onclick="testAndSyncResources()" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold shadow-sm transition-all">Sync Resources</button>
+          </div>
+        </div>
+
         <div class="pt-2 flex justify-between items-center">
           <button onclick="disconnectSheet()" class="text-red-500 hover:text-red-700 dark:hover:text-red-400 font-medium">
             Reset to Team Sheet
@@ -247,6 +279,11 @@
         </div>
         <p><strong>id Column (optional):</strong> A stable unique key used for stars. If omitted, one is derived from the URL (or name), so re-ordering rows no longer moves stars.</p>
         <p><strong>Icon Column:</strong> Accepts standard emojis (e.g. <code>🐙</code>) OR direct image URLs (e.g. <code>https://.../logo.png</code>, <code>https://www.google.com/s2/favicons?domain=github.com&sz=64</code>).</p>
+        <p class="pt-2 font-semibold text-slate-800 dark:text-slate-200">Resources sheet (separate tab or file), row 1 headers:</p>
+        <div class="bg-slate-100 dark:bg-slate-800 p-2.5 rounded-lg font-mono text-[11px] text-slate-800 dark:text-slate-200">
+          title, url, type, topic, description, tags, icon, related_tools, id <span class="text-slate-400">(related_tools and id optional)</span>
+        </div>
+        <p><strong>type:</strong> Guide, Video, PDF, Template, Website, etc. <strong>topic:</strong> used for the filter pills. <strong>tags</strong> and <strong>related_tools</strong> are comma-separated; related_tools can be tool names (e.g. <code>TinkerCAD</code>) or tool ids and show as chips that jump to that tool.</p>
         <p><strong>Publishing:</strong> In your Google Sheet, click <em>File &gt; Share &gt; Publish to the web</em>, choose <em>Comma-separated values (.csv)</em>, click <em>Publish</em>, and paste the URL here.</p>
       </div>
 
@@ -378,11 +415,34 @@ function doGet() {
     /* ================= 2. STATE STORAGE ================= */
     // Team sheet used for every visitor unless they set their own URL.
     // Search with AI: paste your Apps Script web app URL (ends in /exec). Leave '' to disable.
-    const AI_RELAY_URL = 'https://script.google.com/macros/s/AKfycbz5Xo-E0fAmrkhFlYm9NodMiZMMSYA4XH4Zv43ywJDnTB0XDFVM0qBp7qmiKrObBtlazg/exec';
+    const AI_RELAY_URL = '';
+    // Resources tab: published CSV URL of the Resources sheet. Leave '' to show sample resources.
+    const RESOURCES_SHEET_URL = '';
     const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROw6fW-Ex45S7GEThJJ4uVIM-yxHYgbZqT0xcRnVTIdPG4fp0qqnpAj3Mam4OHNPAZ-5cDhRn2rAUm/pub?gid=0&single=true&output=csv';
     function getSheetUrl() { return localStorage.getItem('hub_sheet_url') || DEFAULT_SHEET_URL; }
     let isLoadingTools = false;
-    let favorites = JSON.parse(localStorage.getItem('hub_favorites') || '[]');
+    function loadJson(key, fallback) {
+      try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? fallback : v; } catch (e) { return fallback; }
+    }
+    const FAV_KEYS = { tools: 'hub_favorites', resources: 'hub_res_favorites' };
+    const favStore = { tools: loadJson('hub_favorites', []), resources: loadJson('hub_res_favorites', []) };
+    let favorites = favStore.tools; // favorites of the active tab
+    let activeTab = 'tools';
+    const tabState = { tools: { cat: 'All', q: '' }, resources: { cat: 'All', q: '', type: 'All' } };
+    const SEARCH_PLACEHOLDERS = { tools: 'Search tools or use the filters below to narrow your search', resources: 'Search guides and resources' };
+
+    // Resources state
+    function getResourcesUrl() { return localStorage.getItem('hub_res_sheet_url') || RESOURCES_SHEET_URL; }
+    let resourceItems = loadJson('hub_res_items', []);
+    let isLoadingResources = false;
+    const SAMPLE_RESOURCES = [
+      { id: 'sample-cardboard', title: 'Working With Cardboard', url: '#', type: 'Guide', topic: 'Materials', description: 'SAMPLE: cutting, scoring, folding, and joining cardboard for prototypes.', tags: 'Cardboard, Prototyping', icon: '📦', related_tools: 'Makercase' },
+      { id: 'sample-laser', title: 'Laser Cutting Basics', url: '#', type: 'Video', topic: 'Fabrication', description: 'SAMPLE: preparing vector files, safety, and settings for the laser cutter.', tags: 'Laser, Safety', icon: '🔦', related_tools: 'Makercase' },
+      { id: 'sample-tinkercad', title: 'Intro to TinkerCAD', url: '#', type: 'Guide', topic: '3D Design', description: 'SAMPLE: your first 3D model, from basic shapes to an exported STL.', tags: '3D Modeling, Beginner', icon: '🧊', related_tools: 'TinkerCAD' },
+      { id: 'sample-flyer', title: 'Designing a Flyer', url: '#', type: 'Template', topic: 'Graphic Design', description: 'SAMPLE: layout, hierarchy, and a starter template for event flyers.', tags: 'Layout, Print', icon: '📰', related_tools: '' },
+      { id: 'sample-3dprint', title: '3D Printing Checklist', url: '#', type: 'PDF', topic: 'Fabrication', description: 'SAMPLE: one-page checklist before sending a model to the printer.', tags: '3D Printing, Checklist', icon: '✅', related_tools: 'TinkerCAD' }
+    ];
+
     let sheetTools = [];
     try { sheetTools = JSON.parse(localStorage.getItem('hub_sheet_tools') || '[]'); } catch (e) { sheetTools = []; }
     let activeCategory = 'All';
@@ -430,8 +490,23 @@ function doGet() {
       return DEFAULT_TOOLS; // offline fallback only
     }
 
+    function getAllResources() {
+      if (resourceItems.length > 0) return resourceItems;
+      if (isLoadingResources) return [];
+      return normalizedSamples();
+    }
+    let _samplesCache = null;
+    function normalizedSamples() { return _samplesCache || (_samplesCache = normalizeResources(SAMPLE_RESOURCES).map(r => ({ ...r, sample: true }))); }
+    function usingSampleResources() { return resourceItems.length === 0 && !isLoadingResources; }
+    function getAllItems() { return activeTab === 'resources' ? getAllResources() : getAllTools(); }
+    function getAllTypes() {
+      const set = new Set(['All']);
+      getAllResources().forEach(r => { if (r.type) set.add(r.type); });
+      return Array.from(set);
+    }
+
     function getAllCategories() {
-      const all = getAllTools();
+      const all = getAllItems();
       const cats = new Set(['All', '★ Starred']);
       all.forEach(t => {
         if (t.category) cats.add(t.category);
@@ -543,7 +618,7 @@ function doGet() {
 
     /* ================= 6. FILTERING & SORTING ================= */
     function filterAndSortTools() {
-      const all = getAllTools();
+      const all = getAllItems();
       let filtered = all;
 
       // 1. Category Filter
@@ -551,6 +626,11 @@ function doGet() {
         filtered = filtered.filter(t => favorites.includes(t.id));
       } else if (activeCategory !== 'All') {
         filtered = filtered.filter(t => t.category && t.category.toLowerCase() === activeCategory.toLowerCase());
+      }
+
+      if (activeTab === 'resources' && tabState.resources.type !== 'All') {
+        const ty = tabState.resources.type.toLowerCase();
+        filtered = filtered.filter(r => String(r.type || '').toLowerCase() === ty);
       }
 
       // 2. Search / Query Filter
@@ -621,17 +701,24 @@ function doGet() {
       const resultsText = document.getElementById('results-count-text');
       const totalBadge = document.getElementById('total-count-badge');
 
-      const all = getAllTools();
+      const all = getAllItems();
       const sheetActive = sheetTools.length > 0;
-      totalBadge.textContent = `${all.length} Tools (${sheetActive ? 'All' : 'Built-in'}) · ${favorites.length} Starred`;
-      resultsText.textContent = `Showing ${tools.length} of ${all.length} tools`;
+      const isRes = activeTab === 'resources';
+      const noun = isRes ? 'resources' : 'tools';
+      document.getElementById('empty-noun').textContent = noun;
+      document.getElementById('sample-res-banner').classList.toggle('hidden', !(isRes && usingSampleResources()));
+      totalBadge.textContent = isRes
+        ? `${all.length} Resources (${usingSampleResources() ? 'Samples' : 'All'}) · ${favorites.length} Starred`
+        : `${all.length} Tools (${sheetActive ? 'All' : 'Built-in'}) · ${favorites.length} Starred`;
+      resultsText.textContent = `Showing ${tools.length} of ${all.length} ${noun}`;
 
-      if (isLoadingTools && sheetTools.length === 0) {
-        totalBadge.textContent = 'Loading tools…';
-        resultsText.textContent = 'Loading tools…';
+      const loading = isRes ? (isLoadingResources && resourceItems.length === 0) : (isLoadingTools && sheetTools.length === 0);
+      if (loading) {
+        totalBadge.textContent = `Loading ${noun}…`;
+        resultsText.textContent = `Loading ${noun}…`;
         emptyState.classList.add('hidden');
         container.className = 'min-h-[300px] flex items-center justify-center';
-        container.innerHTML = '<div class="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400"><svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Loading tools…</span></div>';
+        container.innerHTML = '<div class="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400"><svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Loading ' + noun + '…</span></div>';
         return;
       }
 
@@ -701,10 +788,11 @@ function doGet() {
             <div class="flex flex-wrap gap-1 mb-3">
               ${tagPills}
             </div>
+            ${renderRelatedChips(tool)}
             
             <div class="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end text-xs">
               <a href="${escapeHtml(safeUrl(tool.url))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1 font-semibold text-brand-600 dark:text-brand-400 hover:underline">
-                <span>Launch</span>
+                <span>${activeTab === 'resources' ? 'Open' : 'Launch'}</span>
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
               </a>
             </div>
@@ -734,12 +822,13 @@ function doGet() {
                 ${tool.badge ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 font-semibold">${escapeHtml(tool.badge)}</span>` : ''}
               </div>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-xl">${highlightedDesc}</p>
+              ${renderRelatedChips(tool, true)}
             </div>
           </div>
 
           <div class="flex items-center space-x-3 shrink-0 text-xs">
             <a href="${escapeHtml(safeUrl(tool.url))}" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/30 dark:hover:bg-brand-900/50 text-brand-600 dark:text-brand-400 font-semibold rounded-lg transition-colors flex items-center space-x-1">
-              <span>Launch</span>
+              <span>${activeTab === 'resources' ? 'Open' : 'Launch'}</span>
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
             </a>
           </div>
@@ -749,9 +838,10 @@ function doGet() {
 
     /* ================= 8. CATEGORY PILLS ================= */
     function renderCategoryPills() {
+      renderTypePills();
       const pillsContainer = document.getElementById('category-pills');
       const cats = getAllCategories();
-      const all = getAllTools();
+      const all = getAllItems();
 
       pillsContainer.innerHTML = cats.map(cat => {
         let count = 0;
@@ -771,6 +861,71 @@ function doGet() {
           </button>
         `;
       }).join('');
+    }
+
+    function renderTypePills() {
+      const wrap = document.getElementById('type-pills');
+      if (activeTab !== 'resources') { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
+      wrap.classList.remove('hidden');
+      const cur = tabState.resources.type;
+      wrap.innerHTML = '<span class="text-slate-400 dark:text-slate-500 font-medium pr-1">Type:</span>' + getAllTypes().map(t => {
+        const on = cur.toLowerCase() === t.toLowerCase();
+        const cls = on ? 'bg-brand-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800';
+        return `<button type="button" data-action="type" data-type="${escapeHtml(t)}" class="px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all ${cls}">${escapeHtml(t)}</button>`;
+      }).join('');
+    }
+
+    function resolveRelatedTool(ref) {
+      const r = String(ref || '').trim().toLowerCase();
+      if (!r) return null;
+      return getAllTools().find(t => t.id.toLowerCase() === r || String(t.name).toLowerCase() === r) || null;
+    }
+
+    function renderRelatedChips(item, compact) {
+      if (activeTab !== 'resources' || !item.related || !item.related.length) return '';
+      const chips = item.related.map(ref => {
+        const tool = resolveRelatedTool(ref);
+        const label = tool ? tool.name : ref;
+        return `<button type="button" data-action="related" data-tool-name="${escapeHtml(label)}" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/30 dark:hover:bg-brand-900/50 text-brand-600 dark:text-brand-400 transition-colors" title="Show this tool">🧰 ${escapeHtml(label)}</button>`;
+      }).join(' ');
+      return `<div class="flex flex-wrap items-center gap-1 ${compact ? 'mt-1' : 'mb-3'}"><span class="text-[10px] text-slate-400">Related tools:</span> ${chips}</div>`;
+    }
+
+    function jumpToTool(name) {
+      setTab('tools');
+      filterByTag(name);
+    }
+
+    function applyTabUi() {
+      const on = "px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-800 dark:text-white bg-white dark:bg-slate-700 shadow-sm";
+      const off = "px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white";
+      const tb = document.getElementById('tab-tools-btn'), rb = document.getElementById('tab-resources-btn');
+      tb.className = activeTab === 'tools' ? on : off;
+      rb.className = activeTab === 'resources' ? on : off;
+      tb.setAttribute('aria-selected', String(activeTab === 'tools'));
+      rb.setAttribute('aria-selected', String(activeTab === 'resources'));
+      const input = document.getElementById('search-input');
+      input.placeholder = SEARCH_PLACEHOLDERS[activeTab];
+      input.value = currentSearchQuery;
+      document.getElementById('clear-search-btn').classList.toggle('hidden', !currentSearchQuery.trim());
+    }
+
+    function setTab(tab, opts = {}) {
+      if (tab !== 'tools' && tab !== 'resources') tab = 'tools';
+      if (tab !== activeTab) {
+        tabState[activeTab].cat = activeCategory;
+        tabState[activeTab].q = currentSearchQuery;
+        activeTab = tab;
+        activeCategory = tabState[tab].cat;
+        currentSearchQuery = tabState[tab].q;
+        favorites = favStore[tab];
+        highlightedIndex = -1;
+      }
+      if (!opts.fromHash && location.hash !== '#' + tab) {
+        try { history.replaceState(null, '', '#' + tab); } catch (e) { location.hash = tab; }
+      }
+      applyTabUi();
+      renderApp();
     }
 
     function setCategory(cat) {
@@ -887,17 +1042,18 @@ function doGet() {
     }
 
     /* ================= 10. FAVORITES & VIEW SWITCHER ================= */
-    function toggleFavorite(id, evt) {
+    function toggleFavorite(id, evt, kind = activeTab) {
       if (evt) evt.stopPropagation();
-      const idx = favorites.indexOf(id);
+      const list = favStore[kind];
+      const idx = list.indexOf(id);
       if (idx > -1) {
-        favorites.splice(idx, 1);
+        list.splice(idx, 1);
         showToast("Removed from Starred");
       } else {
-        favorites.push(id);
+        list.push(id);
         showToast("Saved to Starred ★");
       }
-      localStorage.setItem('hub_favorites', JSON.stringify(favorites));
+      localStorage.setItem(FAV_KEYS[kind], JSON.stringify(list));
       renderApp();
     }
 
@@ -927,6 +1083,8 @@ function doGet() {
     function openSheetsModal() {
       document.getElementById('sheets-modal').classList.remove('hidden');
       document.getElementById('sheet-url-input').value = getSheetUrl();
+      document.getElementById('res-sheet-url-input').value = getResourcesUrl();
+      updateResourcesStatus();
       updateSyncStatusWidget();
     }
 
@@ -1122,6 +1280,7 @@ function doGet() {
 
     async function triggerQuickSync(options = {}) {
       const background = !!options.background;
+      if (!background && getResourcesUrl()) syncResources({ background: true });
       const savedUrl = getSheetUrl();
       const syncIcon = document.getElementById('sync-icon');
       syncIcon.classList.add('animate-spin');
@@ -1143,6 +1302,128 @@ function doGet() {
         if (isLoadingTools) { isLoadingTools = false; updateSyncStatusWidget(); renderApp(); }
         setTimeout(() => syncIcon.classList.remove('animate-spin'), 600);
       }
+    }
+
+    /* ---------- Resources data ---------- */
+    function normalizeResources(rawRows) {
+      if (!Array.isArray(rawRows)) return [];
+      const seen = new Set();
+      const out = [];
+      const str = v => (v === undefined || v === null) ? '' : String(v).trim();
+      const list = v => Array.isArray(v) ? v.map(str).filter(Boolean) : str(v).split(',').map(t => t.trim()).filter(Boolean);
+      rawRows.forEach(raw => {
+        if (!raw || typeof raw !== 'object') return;
+        const r = {};
+        Object.keys(raw).forEach(k => { r[String(k).trim().toLowerCase().replace(/\s+/g, '_')] = raw[k]; });
+        const title = str(r.title) || str(r.name);
+        const rawUrl = str(r.url) || str(r.link);
+        if (!title && !rawUrl) return;
+        let id = str(r.id);
+        if (!id) {
+          const basis = rawUrl && rawUrl !== '#' ? rawUrl : title;
+          id = 'res-' + (slugify(basis) || 'item') + '-' + hashString(basis.toLowerCase());
+        }
+        let unique = id, n = 2;
+        while (seen.has(unique)) unique = `${id}-${n++}`;
+        seen.add(unique);
+        const type = str(r.type) || 'Resource';
+        const topic = str(r.topic) || str(r.category) || 'General';
+        out.push({
+          id: unique,
+          title: title || 'Untitled Resource',
+          name: title || 'Untitled Resource',      // shared card/search fields
+          url: safeUrl(rawUrl),
+          type,
+          badge: type,
+          topic,
+          category: topic,
+          description: str(r.description),
+          tags: list(r.tags),
+          icon: str(r.icon) || '📘',
+          related: list(r.related_tools || r.related)
+        });
+      });
+      return out;
+    }
+
+    function parseResourcesPayload(text) {
+      let data;
+      try { data = JSON.parse(text); } catch (e) {
+        const rows = parseCsv(text);
+        if (rows.length < 2) return [];
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+        data = rows.slice(1).map(cols => { const o = {}; headers.forEach((h, i) => { if (h) o[h] = (cols[i] || '').trim(); }); return o; });
+      }
+      if (data && !Array.isArray(data) && Array.isArray(data.resources)) data = data.resources;
+      return normalizeResources(data);
+    }
+
+    async function syncResources(options = {}) {
+      const background = !!options.background;
+      const url = options.url || getResourcesUrl();
+      if (!url) { isLoadingResources = false; updateResourcesStatus(); renderApp(); return false; }
+      try {
+        const text = await fetchWithCorsFallback(url);
+        const items = parseResourcesPayload(text);
+        if (items.length === 0) throw new Error('No resource rows parsed. Check the column headers.');
+        resourceItems = items;
+        localStorage.setItem('hub_res_items', JSON.stringify(items));
+        localStorage.setItem('hub_res_last_sync', new Date().toISOString());
+        if (!background) showToast(`Synced ${items.length} resources` + (lastFetchUsedProxy ? ' (via proxy)' : ''));
+        return true;
+      } catch (err) {
+        showToast((resourceItems.length ? 'Resources sync failed, showing cached resources: ' : 'Could not load resources; showing samples. ') + err.message, 'error');
+        if (options.rethrow) throw err;
+        return false;
+      } finally {
+        isLoadingResources = false;
+        updateResourcesStatus();
+        renderApp();
+      }
+    }
+
+    async function testAndSyncResources() {
+      const input = document.getElementById('res-sheet-url-input');
+      const url = input.value.trim();
+      if (!url) { resetResources(); return; }
+      const btn = document.getElementById('res-sync-btn');
+      btn.disabled = true; btn.textContent = 'Syncing...';
+      const ok = await syncResources({ url });
+      if (ok) {
+        if (url === RESOURCES_SHEET_URL) localStorage.removeItem('hub_res_sheet_url');
+        else localStorage.setItem('hub_res_sheet_url', url);
+        updateResourcesStatus();
+      }
+      btn.disabled = false; btn.textContent = 'Sync Resources';
+    }
+
+    function resetResources() {
+      localStorage.removeItem('hub_res_sheet_url');
+      localStorage.removeItem('hub_res_items');
+      localStorage.removeItem('hub_res_last_sync');
+      resourceItems = [];
+      document.getElementById('res-sheet-url-input').value = RESOURCES_SHEET_URL;
+      if (RESOURCES_SHEET_URL) {
+        isLoadingResources = true;
+        showToast('Resetting to the default Resources sheet…');
+        renderApp();
+        syncResources();
+      } else {
+        isLoadingResources = false;
+        showToast('Resources reset to samples');
+        updateResourcesStatus();
+        renderApp();
+      }
+    }
+
+    function updateResourcesStatus() {
+      const d = document.getElementById('res-sync-details');
+      if (!d) return;
+      const last = localStorage.getItem('hub_res_last_sync');
+      if (resourceItems.length) {
+        d.textContent = `${localStorage.getItem('hub_res_sheet_url') ? 'Custom sheet' : 'Resources sheet'}: ${resourceItems.length} resources. Last sync: ${last ? new Date(last).toLocaleTimeString() : 'Recently'}`;
+      } else if (isLoadingResources) d.textContent = 'Loading resources…';
+      else d.textContent = getResourcesUrl() ? 'Resources sheet unavailable. Showing sample resources.' : 'No resources sheet connected. Showing sample resources.';
     }
 
     function disconnectSheet() {
@@ -1238,6 +1519,11 @@ function doGet() {
     window.addEventListener('DOMContentLoaded', () => {
       sheetTools = normalizeTools(sheetTools);
       isLoadingTools = sheetTools.length === 0;
+      resourceItems = normalizeResources(Array.isArray(resourceItems) ? resourceItems : []);
+      isLoadingResources = !!getResourcesUrl() && resourceItems.length === 0;
+      const hashTab = location.hash.replace('#', '');
+      if (hashTab === 'resources') setTab('resources', { fromHash: true });
+      else applyTabUi();
       initTheme();
       setViewMode(viewMode);
       updateSyncStatusWidget();
@@ -1246,6 +1532,12 @@ function doGet() {
       // Background sync if a sheet was previously connected
       // Always sync: the user's saved URL, or the team sheet by default
       triggerQuickSync({ background: true });
+      if (getResourcesUrl()) syncResources({ background: true });
+    });
+
+    window.addEventListener('hashchange', () => {
+      const t = location.hash.replace('#', '');
+      if (t === 'tools' || t === 'resources') setTab(t, { fromHash: true });
     });
 
     // Event delegation (no inline handlers with interpolated data)
@@ -1254,6 +1546,14 @@ function doGet() {
       if (!btn) return;
       if (btn.dataset.action === 'star') toggleFavorite(btn.dataset.id, e);
       else if (btn.dataset.action === 'tag') filterByTag(btn.dataset.tag, e);
+      else if (btn.dataset.action === 'related') { e.stopPropagation(); jumpToTool(btn.dataset.toolName); }
+    });
+    document.getElementById('type-pills').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="type"]');
+      if (!btn) return;
+      tabState.resources.type = btn.dataset.type;
+      highlightedIndex = -1;
+      renderApp();
     });
     document.getElementById('category-pills').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-action="category"]');
@@ -1345,8 +1645,8 @@ function doGet() {
       document.getElementById('ai-chat-input').disabled = busy;
     }
 
-    function renderAiRecommendations(recs) {
-      const byId = new Map(getAllTools().map(t => [t.id, t]));
+    function renderAiRecommendations(recs, kind = 'tools') {
+      const byId = new Map((kind === 'resources' ? getAllResources() : getAllTools()).map(t => [t.id, t]));
       const list = el('div', 'space-y-2');
       let shown = 0;
       (recs || []).forEach(rec => {
@@ -1361,7 +1661,7 @@ function doGet() {
         const body = el('div', 'min-w-0 flex-1');
         const head = el('div', 'flex items-center gap-1.5 flex-wrap');
         head.appendChild(el('span', 'text-xs font-bold text-slate-900 dark:text-white', tool.name));
-        head.appendChild(el('span', 'text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400', tool.category));
+        head.appendChild(el('span', 'text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400', kind === 'resources' ? [tool.type, tool.topic].filter(Boolean).join(' · ') : tool.category));
         body.appendChild(head);
         if (rec.reason) body.appendChild(el('p', 'text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed', rec.reason));
         card.appendChild(body);
@@ -1370,14 +1670,14 @@ function doGet() {
         const star = el('button', 'p-1 rounded-lg text-slate-300 dark:text-slate-600 hover:text-amber-400 transition-colors');
         star.type = 'button';
         star.title = 'Star';
-        const starGlyph = el('span', 'text-base' + (favorites.includes(tool.id) ? ' text-amber-400' : ''), '★');
+        const starGlyph = el('span', 'text-base' + (favStore[kind].includes(tool.id) ? ' text-amber-400' : ''), '★');
         star.appendChild(starGlyph);
         star.addEventListener('click', (e) => {
-          toggleFavorite(tool.id, e);
-          starGlyph.classList.toggle('text-amber-400', favorites.includes(tool.id));
+          toggleFavorite(tool.id, e, kind);
+          starGlyph.classList.toggle('text-amber-400', favStore[kind].includes(tool.id));
         });
         actions.appendChild(star);
-        const a = el('a', 'px-2.5 py-1 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/30 dark:hover:bg-brand-900/50 text-brand-600 dark:text-brand-400 font-semibold rounded-lg text-[11px]', 'Launch');
+        const a = el('a', 'px-2.5 py-1 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/30 dark:hover:bg-brand-900/50 text-brand-600 dark:text-brand-400 font-semibold rounded-lg text-[11px]', kind === 'resources' ? 'Open' : 'Launch');
         a.href = safeUrl(tool.url);
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
@@ -1387,6 +1687,7 @@ function doGet() {
       });
       if (!shown) return;
       const row = el('div', 'pl-1');
+      if (kind === 'resources') row.appendChild(el('div', 'text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1', 'Helpful resources'));
       row.appendChild(list);
       document.getElementById('ai-chat-log').appendChild(row);
       scrollAiLog();
@@ -1396,13 +1697,17 @@ function doGet() {
       const tools = getAllTools().slice(0, 200).map(t => ({
         id: t.id, name: t.name, category: t.category, description: t.description, tags: t.tags || []
       }));
+      // Only real (sheet) resources are sent; samples are placeholders.
+      const resources = resourceItems.slice(0, 200).map(r => ({
+        id: r.id, title: r.title, type: r.type, topic: r.topic, description: r.description, tags: r.tags || []
+      }));
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer = setTimeout(() => controller && controller.abort(), AI_TIMEOUT_MS);
       try {
         const resp = await fetch(AI_RELAY_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // simple request: no CORS preflight
-          body: JSON.stringify({ messages: aiMessages.slice(-12), tools }),
+          body: JSON.stringify({ messages: aiMessages.slice(-12), tools, resources }),
           signal: controller ? controller.signal : undefined
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1430,7 +1735,10 @@ function doGet() {
         const message = String((data && data.message) || '').trim() || (data && data.type === 'clarify' ? 'Could you tell me a bit more?' : 'Here are some tools that could help:');
         aiMessages.push({ role: 'assistant', content: message });
         appendAiBubble('assistant', message);
-        if (data && data.type === 'recommend') renderAiRecommendations(data.recommendations);
+        if (data && data.type === 'recommend') {
+          renderAiRecommendations(data.recommendations, 'tools');
+          renderAiRecommendations(data.resourceRecommendations, 'resources');
+        }
       } catch (err) {
         hideAiTyping();
         const msg = (err && err.message && !/^HTTP|Failed to fetch|NetworkError/i.test(err.message))
